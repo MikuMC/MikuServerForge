@@ -1,0 +1,50 @@
+--- ../src-base/minecraft/net/minecraft/entity/ai/attributes/AttributeMap.java
++++ ../src-work/minecraft/net/minecraft/entity/ai/attributes/AttributeMap.java
+@@ -16,7 +16,7 @@
+         return (ModifiableAttributeInstance)super.getAttributeInstance(attribute);
+     }
+ 
+-    public ModifiableAttributeInstance getAttributeInstanceByName(String attributeName)
++    public synchronized ModifiableAttributeInstance getAttributeInstanceByName(String attributeName)
+     {
+         IAttributeInstance iattributeinstance = super.getAttributeInstanceByName(attributeName);
+ 
+@@ -28,7 +28,7 @@
+         return (ModifiableAttributeInstance)iattributeinstance;
+     }
+ 
+-    public IAttributeInstance registerAttribute(IAttribute attribute)
++    public synchronized IAttributeInstance registerAttribute(IAttribute attribute)
+     {
+         IAttributeInstance iattributeinstance = super.registerAttribute(attribute);
+ 
+@@ -40,12 +40,12 @@
+         return iattributeinstance;
+     }
+ 
+-    protected IAttributeInstance createInstance(IAttribute attribute)
++    protected synchronized IAttributeInstance createInstance(IAttribute attribute)
+     {
+         return new ModifiableAttributeInstance(this, attribute);
+     }
+ 
+-    public void onAttributeModified(IAttributeInstance instance)
++    public synchronized void onAttributeModified(IAttributeInstance instance)
+     {
+         if (instance.getAttribute().getShouldWatch())
+         {
+@@ -63,12 +63,12 @@
+         }
+     }
+ 
+-    public Set<IAttributeInstance> getDirtyInstances()
++    public synchronized Set<IAttributeInstance> getDirtyInstances()
+     {
+         return this.dirtyInstances;
+     }
+ 
+-    public Collection<IAttributeInstance> getWatchedAttributes()
++    public synchronized Collection<IAttributeInstance> getWatchedAttributes()
+     {
+         Set<IAttributeInstance> set = Sets.<IAttributeInstance>newHashSet();
+ 

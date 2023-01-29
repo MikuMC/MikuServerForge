@@ -1,0 +1,50 @@
+--- ../src-base/minecraft/net/minecraft/pathfinding/PathWorldListener.java
++++ ../src-work/minecraft/net/minecraft/pathfinding/PathWorldListener.java
+@@ -16,31 +16,29 @@
+ 
+ public class PathWorldListener implements IWorldEventListener
+ {
+-    private final List<PathNavigate> navigations = Lists.<PathNavigate>newArrayList();
++    private final List<PathNavigate> navigations = Lists.<PathNavigate>newCopyOnWriteArrayList();
++    private final Object updatePathLock = new Object();
+ 
+     public void notifyBlockUpdate(World worldIn, BlockPos pos, IBlockState oldState, IBlockState newState, int flags)
+     {
+-        if (this.didBlockChange(worldIn, pos, oldState, newState))
+-        {
+-            int i = 0;
+-
+-            for (int j = this.navigations.size(); i < j; ++i)
++        synchronized (this.updatePathLock){
++            if (this.didBlockChange(worldIn, pos, oldState, newState))
+             {
+-                PathNavigate pathnavigate = this.navigations.get(i);
+-
+-                if (pathnavigate != null && !pathnavigate.canUpdatePathOnTimeout())
+-                {
+-                    Path path = pathnavigate.getPath();
+-
+-                    if (path != null && !path.isFinished() && path.getCurrentPathLength() != 0)
++                for (PathNavigate pathnavigate : this.navigations) {
++                    if (pathnavigate != null && !pathnavigate.canUpdatePathOnTimeout())
+                     {
+-                        PathPoint pathpoint = pathnavigate.currentPath.getFinalPathPoint();
+-                        double d0 = pos.distanceSq(((double)pathpoint.x + pathnavigate.entity.posX) / 2.0D, ((double)pathpoint.y + pathnavigate.entity.posY) / 2.0D, ((double)pathpoint.z + pathnavigate.entity.posZ) / 2.0D);
+-                        int k = (path.getCurrentPathLength() - path.getCurrentPathIndex()) * (path.getCurrentPathLength() - path.getCurrentPathIndex());
++                        Path path = pathnavigate.getPath();
+ 
+-                        if (d0 < (double)k)
++                        if (path != null && !path.isFinished() && path.getCurrentPathLength() != 0)
+                         {
+-                            pathnavigate.updatePath();
++                            PathPoint pathpoint = pathnavigate.currentPath.getFinalPathPoint();
++                            double d0 = pos.distanceSq(((double)pathpoint.x + pathnavigate.entity.posX) / 2.0D, ((double)pathpoint.y + pathnavigate.entity.posY) / 2.0D, ((double)pathpoint.z + pathnavigate.entity.posZ) / 2.0D);
++                            int k = (path.getCurrentPathLength() - path.getCurrentPathIndex()) * (path.getCurrentPathLength() - path.getCurrentPathIndex());
++
++                            if (d0 < (double)k)
++                            {
++                                pathnavigate.updatePath();
++                            }
+                         }
+                     }
+                 }

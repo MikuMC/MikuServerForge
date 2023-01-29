@@ -1,0 +1,33 @@
+--- ../src-base/minecraft/net/minecraft/village/VillageCollection.java
++++ ../src-work/minecraft/net/minecraft/village/VillageCollection.java
+@@ -4,6 +4,9 @@
+ import java.util.Iterator;
+ import java.util.List;
+ import javax.annotation.Nullable;
++
++import it.unimi.dsi.fastutil.objects.ObjectArrayList;
++import it.unimi.dsi.fastutil.objects.ObjectLists;
+ import net.minecraft.block.Block;
+ import net.minecraft.block.BlockDoor;
+ import net.minecraft.block.material.Material;
+@@ -19,9 +22,9 @@
+ public class VillageCollection extends WorldSavedData
+ {
+     private World world;
+-    private final List<BlockPos> villagerPositionsList = Lists.<BlockPos>newArrayList();
+-    private final List<VillageDoorInfo> newDoors = Lists.<VillageDoorInfo>newArrayList();
+-    private final List<Village> villageList = Lists.<Village>newArrayList();
++    private final List<BlockPos> villagerPositionsList = ObjectLists.synchronize(new ObjectArrayList<>());
++    private final List<VillageDoorInfo> newDoors = ObjectLists.synchronize(new ObjectArrayList<>());
++    private final List<Village> villageList = ObjectLists.synchronize(new ObjectArrayList<>());
+     private int tickCounter;
+ 
+     public VillageCollection(String name)
+@@ -151,6 +154,7 @@
+ 
+     private void addDoorsAround(BlockPos central)
+     {
++        if (!this.world.isAreaLoaded(central, 16)) return; // Forge: prevent loading unloaded chunks when checking for doors
+         int i = 16;
+         int j = 4;
+         int k = 16;

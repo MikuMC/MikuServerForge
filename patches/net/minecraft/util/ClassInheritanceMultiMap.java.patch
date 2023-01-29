@@ -1,0 +1,110 @@
+--- ../src-base/minecraft/net/minecraft/util/ClassInheritanceMultiMap.java
++++ ../src-work/minecraft/net/minecraft/util/ClassInheritanceMultiMap.java
+@@ -2,8 +2,7 @@
+ 
+ import com.google.common.collect.Iterators;
+ import com.google.common.collect.Lists;
+-import com.google.common.collect.Maps;
+-import com.google.common.collect.Sets;
++import it.unimi.dsi.fastutil.objects.*;
+ import java.util.AbstractSet;
+ import java.util.Collections;
+ import java.util.Iterator;
+@@ -13,11 +12,12 @@
+ 
+ public class ClassInheritanceMultiMap<T> extends AbstractSet<T>
+ {
+-    private static final Set < Class<? >> ALL_KNOWN = Sets. < Class<? >> newHashSet();
+-    private final Map < Class<?>, List<T >> map = Maps. < Class<?>, List<T >> newHashMap();
+-    private final Set < Class<? >> knownKeys = Sets. < Class<? >> newIdentityHashSet();
++    // Forge: Use concurrent collection to allow creating chunks from multiple threads safely
++    private static final Set < Class<? >> ALL_KNOWN = Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<Class<?>, Boolean>());
++    private final Map < Class<?>, List<T >> map = Reference2ObjectMaps.synchronize(new Reference2ObjectOpenHashMap<>());
++    private final Set < Class<? >> knownKeys = ObjectSets.synchronize(new ObjectArraySet<>());
+     private final Class<T> baseClass;
+-    private final List<T> values = Lists.<T>newArrayList();
++    private final List<T> values = Lists.<T>newCopyOnWriteArrayList();
+ 
+     public ClassInheritanceMultiMap(Class<T> baseClassIn)
+     {
+@@ -63,7 +63,7 @@
+         }
+     }
+ 
+-    public boolean add(T p_add_1_)
++    public synchronized boolean add(T p_add_1_)
+     {
+         for (Class<?> oclass : this.knownKeys)
+         {
+@@ -82,7 +82,9 @@
+ 
+         if (list == null)
+         {
+-            this.map.put(parentClass, Lists.newArrayList(value));
++            final List<T> newValue = ObjectLists.synchronize(new ObjectArrayList<>());
++            newValue.add(value);
++            this.map.put(parentClass,newValue);
+         }
+         else
+         {
+@@ -90,7 +92,7 @@
+         }
+     }
+ 
+-    public boolean remove(Object p_remove_1_)
++    public synchronized boolean remove(Object p_remove_1_)
+     {
+         T t = (T)p_remove_1_;
+         boolean flag = false;
+@@ -111,38 +113,32 @@
+         return flag;
+     }
+ 
+-    public boolean contains(Object p_contains_1_)
++    public synchronized boolean contains(Object p_contains_1_)
+     {
+         return Iterators.contains(this.getByClass(p_contains_1_.getClass()).iterator(), p_contains_1_);
+     }
+ 
+-    public <S> Iterable<S> getByClass(final Class<S> clazz)
++    public synchronized <S> Iterable<S> getByClass(final Class<S> clazz)
+     {
+-        return new Iterable<S>()
+-        {
+-            public Iterator<S> iterator()
+-            {
+-                List<T> list = (List)ClassInheritanceMultiMap.this.map.get(ClassInheritanceMultiMap.this.initializeClassLookup(clazz));
+-
+-                if (list == null)
+-                {
+-                    return Collections.<S>emptyIterator();
+-                }
+-                else
+-                {
+-                    Iterator<T> iterator = list.iterator();
+-                    return Iterators.filter(iterator, clazz);
+-                }
++        return () -> {
++            // CatServer start - Optimization from Foamfix
++            Class c = ClassInheritanceMultiMap.this.initializeClassLookup(clazz);
++            List<T> list = ClassInheritanceMultiMap.this.map.get(c);
++            if (list == null) {
++                return Collections.emptyIterator();
++            } else {
++                Iterator<T> iterator = list.iterator();
++                return clazz == c ? (Iterator<S>) iterator : Iterators.filter(iterator, clazz);
+             }
+         };
+     }
+ 
+-    public Iterator<T> iterator()
++    public synchronized Iterator<T> iterator()
+     {
+         return (Iterator<T>)(this.values.isEmpty() ? Collections.emptyIterator() : Iterators.unmodifiableIterator(this.values.iterator()));
+     }
+ 
+-    public int size()
++    public synchronized int size()
+     {
+         return this.values.size();
+     }
