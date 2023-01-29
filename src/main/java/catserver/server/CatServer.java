@@ -3,7 +3,6 @@ package catserver.server;
 import catserver.server.threads.AsyncChatThread;
 import catserver.server.threads.AsyncTaskThread;
 import catserver.server.threads.RealtimeThread;
-import catserver.server.utils.VersionCheck;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.storage.SaveHandler;
@@ -28,7 +27,6 @@ public class CatServer {
 
     public static void onServerStart() {
         RealtimeThread.INSTANCE.start();
-        new VersionCheck();
     }
 
     public static void onServerStop() {
