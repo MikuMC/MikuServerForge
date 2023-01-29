@@ -42,10 +42,12 @@ import javax.annotation.Nullable;
  *
  */
 public class FMLEmbeddedChannel extends EmbeddedChannel {
+
     public FMLEmbeddedChannel(String channelName, Side source, ChannelHandler... handlers)
     {
         this(Loader.instance().activeModContainer(), channelName, source, handlers);
     }
+
     public FMLEmbeddedChannel(ModContainer container, String channelName, Side source, ChannelHandler... handlers)
     {
         super(handlers);
@@ -55,6 +57,7 @@ public class FMLEmbeddedChannel extends EmbeddedChannel {
         this.pipeline().addFirst("fml:outbound",new FMLOutboundHandler());
     }
 
+    private final Object generatePackLock = new Object();
 
     /**
      * Utility method to generate a regular packet from a custom packet. Basically, it writes the packet through the
@@ -68,11 +71,13 @@ public class FMLEmbeddedChannel extends EmbeddedChannel {
      */
     public Packet<?> generatePacketFrom(Object object)
     {
-        OutboundTarget outboundTarget = attr(FMLOutboundHandler.FML_MESSAGETARGET).getAndSet(OutboundTarget.NOWHERE);
-        writeOutbound(object);
-        Packet<?> pkt = (Packet<?>) outboundMessages().poll();
-        attr(FMLOutboundHandler.FML_MESSAGETARGET).set(outboundTarget);
-        return pkt;
+        synchronized (this.generatePackLock){
+            OutboundTarget outboundTarget = attr(FMLOutboundHandler.FML_MESSAGETARGET).getAndSet(OutboundTarget.NOWHERE);
+            writeOutbound(object);
+            Packet<?> pkt = (Packet<?>) outboundMessages().poll();
+            attr(FMLOutboundHandler.FML_MESSAGETARGET).set(outboundTarget);
+            return pkt;
+        }
     }
 
     @Nullable

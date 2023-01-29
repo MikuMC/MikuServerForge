@@ -75,24 +75,32 @@ public class ASMEventHandler implements IEventListener
         }
     }
 
+    private final Object invokeLock = new Object();
+
     @SuppressWarnings("rawtypes")
     @Override
     public void invoke(Event event)
     {
-        if (GETCONTEXT)
-            ThreadContext.put("mod", owner == null ? "" : owner.getName());
-        if (handler != null)
-        {
-            if (!event.isCancelable() || !event.isCanceled() || subInfo.receiveCanceled())
-            {
-                if (filter == null || filter == ((IGenericEvent)event).getGenericType())
+        synchronized (this.invokeLock){
+            try {
+                if (GETCONTEXT)
+                    ThreadContext.put("mod", owner == null ? "" : owner.getName());
+                if (handler != null)
                 {
-                    handler.invoke(event);
+                    if (!event.isCancelable() || !event.isCanceled() || subInfo.receiveCanceled())
+                    {
+                        if (filter == null || filter == ((IGenericEvent)event).getGenericType())
+                        {
+                            handler.invoke(event);
+                        }
+                    }
                 }
+                if (GETCONTEXT)
+                    ThreadContext.remove("mod");
+            }catch (Exception e){
+                e.printStackTrace();
             }
         }
-        if (GETCONTEXT)
-            ThreadContext.remove("mod");
     }
 
     public EventPriority getPriority()
