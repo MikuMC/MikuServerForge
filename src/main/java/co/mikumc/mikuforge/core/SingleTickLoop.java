@@ -82,7 +82,7 @@ public class SingleTickLoop extends NormalTickThread implements IThreadListener 
                 this.mspt = System.nanoTime() - this.lastTickTime;
                 if ((50_000_000L - (this.mspt + this.lastLastedTime)) > 0){
                     LockSupport.parkNanos(50_000_000L - this.mspt - this.lastLastedTime);
-                    this.lastTickTime = 0;
+                    this.lastLastedTime = 0;
                 }else{
                     this.lastLastedTime = this.mspt - 50_000_000L;
                 }
