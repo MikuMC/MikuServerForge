@@ -1,6 +1,29 @@
 --- ../src-base/minecraft/net/minecraft/network/NetworkSystem.java
 +++ ../src-work/minecraft/net/minecraft/network/NetworkSystem.java
-@@ -49,21 +49,21 @@
+@@ -27,16 +27,22 @@
+ import java.util.Collections;
+ import java.util.Iterator;
+ import java.util.List;
++
++import it.unimi.dsi.fastutil.objects.ObjectArrayList;
++import it.unimi.dsi.fastutil.objects.ObjectLists;
+ import net.minecraft.client.network.NetHandlerHandshakeMemory;
+ import net.minecraft.crash.CrashReport;
+ import net.minecraft.crash.CrashReportCategory;
+ import net.minecraft.crash.ICrashReportDetail;
++import net.minecraft.entity.player.EntityPlayer;
++import net.minecraft.entity.player.EntityPlayerMP;
+ import net.minecraft.network.play.server.SPacketDisconnect;
+ import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.network.NetHandlerHandshakeTCP;
+ import net.minecraft.util.LazyLoadBase;
+ import net.minecraft.util.ReportedException;
+ import net.minecraft.util.text.TextComponentString;
++import net.minecraft.world.WorldServer;
+ import net.minecraftforge.fml.relauncher.Side;
+ import net.minecraftforge.fml.relauncher.SideOnly;
+ import org.apache.logging.log4j.LogManager;
+@@ -49,27 +55,27 @@
      {
          protected NioEventLoopGroup load()
          {
@@ -25,7 +48,14 @@
          }
      };
      private final MinecraftServer mcServer;
-@@ -79,6 +79,7 @@
+     public volatile boolean isAlive;
+     private final List<ChannelFuture> endpoints = Collections.<ChannelFuture>synchronizedList(Lists.newArrayList());
+-    private final List<NetworkManager> networkManagers = Collections.<NetworkManager>synchronizedList(Lists.newArrayList());
++    private final List<NetworkManager> networkManagers = ObjectLists.synchronize(new ObjectArrayList<>());
+ 
+     public NetworkSystem(MinecraftServer server)
+     {
+@@ -79,6 +85,7 @@
  
      public void addLanEndpoint(InetAddress address, int port) throws IOException
      {
@@ -33,7 +63,7 @@
          synchronized (this.endpoints)
          {
              Class <? extends ServerSocketChannel > oclass;
-@@ -110,7 +111,7 @@
+@@ -110,7 +117,7 @@
                          ;
                      }
  
@@ -42,27 +72,101 @@
                      NetworkManager networkmanager = new NetworkManager(EnumPacketDirection.SERVERBOUND);
                      NetworkSystem.this.networkManagers.add(networkmanager);
                      p_initChannel_1_.pipeline().addLast("packet_handler", networkmanager);
-@@ -164,6 +165,13 @@
-     {
-         synchronized (this.networkManagers)
-         {
-+            // Spigot Start
-+            // This prevents players from 'gaming' the server, and strategically relogging to increase their position in the tick order
-+            if (org.spigotmc.SpigotConfig.playerShuffle > 0 && MinecraftServer.currentTick % org.spigotmc.SpigotConfig.playerShuffle == 0)
-+            {
-+                Collections.shuffle(this.networkManagers);
-+            }
-+            // Spigot End
-             Iterator<NetworkManager> iterator = this.networkManagers.iterator();
+@@ -160,59 +167,50 @@
+         }
+     }
  
-             while (iterator.hasNext())
-@@ -208,6 +216,9 @@
+-    public void networkTick()
+-    {
+-        synchronized (this.networkManagers)
++    public synchronized void tickSingle(NetworkManager networkmanager){
++        if (!networkmanager.isChannelOpen()){
++            if (!networkmanager.preparing){
++                this.networkManagers.remove(networkmanager);
++                networkmanager.checkDisconnected();
++            }
++            return;
++        }
++        try
+         {
+-            Iterator<NetworkManager> iterator = this.networkManagers.iterator();
++            networkmanager.processReceivedPackets();
++        }
++        catch (Exception exception)
++        {
++            LOGGER.warn("Failed to handle packet for {}", networkmanager.getRemoteAddress(), exception);
++            final TextComponentString textcomponentstring = new TextComponentString("Internal server error");
++            networkmanager.sendPacket(new SPacketDisconnect(textcomponentstring), p_operationComplete_1_ -> networkmanager.closeChannel(textcomponentstring));
++            networkmanager.disableAutoRead();
++        }
++    }
+ 
+-            while (iterator.hasNext())
+-            {
+-                final NetworkManager networkmanager = iterator.next();
+-
+-                if (!networkmanager.hasNoChannel())
+-                {
+-                    if (networkmanager.isChannelOpen())
+-                    {
+-                        try
+-                        {
+-                            networkmanager.processReceivedPackets();
++    public void networkTick() {
++        // Spigot Start
++        // This prevents players from 'gaming' the server, and strategically relogging to increase their position in the tick order
++        if (org.spigotmc.SpigotConfig.playerShuffle > 0 && MinecraftServer.currentTick % org.spigotmc.SpigotConfig.playerShuffle == 0) {
++            Collections.shuffle(this.networkManagers);
++        }
++        // Spigot End
++        for (NetworkManager manager : this.networkManagers){
++            boolean flag = true;
++            for (WorldServer server : MinecraftServer.getServerInst().worlds){
++                for(EntityPlayer player : server.playerEntities){
++                    if (player instanceof EntityPlayerMP){
++                        final EntityPlayerMP playerMP = (EntityPlayerMP) player;
++                        if (playerMP.connection.netManager.equals(manager)){
++                            flag = false;
++                            break;
+                         }
+-                        catch (Exception exception)
+-                        {
+-                            if (networkmanager.isLocalChannel())
+-                            {
+-                                CrashReport crashreport = CrashReport.makeCrashReport(exception, "Ticking memory connection");
+-                                CrashReportCategory crashreportcategory = crashreport.makeCategory("Ticking connection");
+-                                crashreportcategory.addDetail("Connection", new ICrashReportDetail<String>()
+-                                {
+-                                    public String call() throws Exception
+-                                    {
+-                                        return networkmanager.toString();
+-                                    }
+-                                });
+-                                throw new ReportedException(crashreport);
+-                            }
+-
+-                            LOGGER.warn("Failed to handle packet for {}", networkmanager.getRemoteAddress(), exception);
+-                            final TextComponentString textcomponentstring = new TextComponentString("Internal server error");
+-                            networkmanager.sendPacket(new SPacketDisconnect(textcomponentstring), new GenericFutureListener < Future <? super Void >> ()
+-                            {
+-                                public void operationComplete(Future <? super Void > p_operationComplete_1_) throws Exception
+-                                {
+-                                    networkmanager.closeChannel(textcomponentstring);
+-                                }
+-                            });
+-                            networkmanager.disableAutoRead();
+-                        }
                      }
-                     else
-                     {
-+                        // Spigot Start - Fix a race condition where a NetworkManager could be unregistered just before connection.
-+                        if (networkmanager.preparing) continue;
-+                        // Spigot End
-                         iterator.remove();
-                         networkmanager.checkDisconnected();
-                     }
+-                    else
+-                    {
+-                        iterator.remove();
+-                        networkmanager.checkDisconnected();
+-                    }
+                 }
+             }
++            if (flag){
++                this.tickSingle(manager);
++            }
+         }
+     }
+ 

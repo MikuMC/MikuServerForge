@@ -1,6 +1,7 @@
 package catserver.server;
 
 import co.earthme.hearse.utils.TickThread;
+import co.earthme.hearse.utils.NormalTickThread;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
@@ -13,7 +14,7 @@ import java.util.function.Supplier;
 
 public class AsyncCatcher {
     public static boolean isMainThread() {
-        return Thread.currentThread() == MinecraftServer.getServerInst().primaryThread || Thread.currentThread() instanceof TickThread;
+        return Thread.currentThread() == MinecraftServer.getServerInst().primaryThread || Thread.currentThread() instanceof TickThread || NormalTickThread.isNormalTickThread();
     }
 
     public static boolean checkAsync(String reason) {

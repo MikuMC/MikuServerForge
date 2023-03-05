@@ -275,7 +275,7 @@
 +                        return event.getResult();
 +                    }};
 +
-+                    NetHandlerLoginServer.this.server.processQueue.add(waitable);
++                    NetHandlerLoginServer.this.server.randomPostTask(waitable);
 +                    if (waitable.get() != PlayerPreLoginEvent.Result.ALLOWED) {
 +                        disconnect(event.getKickMessage());
 +                        return;

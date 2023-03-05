@@ -50,7 +50,7 @@
 +                    nbt.setTag("SkullOwner", NBTUtil.writeGameProfile(new NBTTagCompound(), gameprofile));
 +                    return false;
 +                }
-+            }, false);
++            }, true);
 +            // Spigot end
              return true;
          }

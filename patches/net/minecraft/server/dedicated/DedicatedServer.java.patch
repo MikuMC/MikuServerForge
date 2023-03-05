@@ -353,7 +353,7 @@
 +                return rconConsoleSource.getLogContents();
 +            }
 +        };
-+        processQueue.add(waitable);
++        MinecraftServer.getServerInst().randomPostTask(waitable);
 +        try {
 +            return waitable.get();
 +        } catch (java.util.concurrent.ExecutionException e) {

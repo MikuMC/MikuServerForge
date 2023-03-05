@@ -10,7 +10,7 @@ public class AsyncCatcher
 
     public static void catchOp(String reason)
     {
-        if ( enabled && Thread.currentThread() != MinecraftServer.getServerInst().primaryThread && !(Thread.currentThread() instanceof TickThread))
+        if ( enabled && Thread.currentThread() != MinecraftServer.getServerInst().primaryThread && !(Thread.currentThread() instanceof TickThread) && !co.earthme.hearse.utils.NormalTickThread.isNormalTickThread())
         {
             throw new IllegalStateException( "Asynchronous " + reason + "!" );
         }

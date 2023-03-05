@@ -91,6 +91,15 @@
  
              if (potion != null)
              {
+@@ -1713,7 +1724,7 @@
+                 }
+                 else
+                 {
+-                    this.gameController.addScheduledTask(new Runnable()
++                    this.gameController.world.tickLoop.addScheduledTask(new Runnable()
+                     {
+                         public void run()
+                         {
 @@ -1856,6 +1867,7 @@
              }
              finally

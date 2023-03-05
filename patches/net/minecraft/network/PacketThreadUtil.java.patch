@@ -1,0 +1,20 @@
+--- ../src-base/minecraft/net/minecraft/network/PacketThreadUtil.java
++++ ../src-work/minecraft/net/minecraft/network/PacketThreadUtil.java
+@@ -6,15 +6,9 @@
+ {
+     public static <T extends INetHandler> void checkThreadAndEnqueue(final Packet<T> packetIn, final T processor, IThreadListener scheduler) throws ThreadQuickExitException
+     {
+-        if (!scheduler.isCallingFromMinecraftThread())
++        if (!((NetHandlerPlayServer)processor).player.world.tickLoop.isCallingFromMinecraftThread())
+         {
+-            scheduler.addScheduledTask(new Runnable()
+-            {
+-                public void run()
+-                {
+-                    packetIn.processPacket(processor);
+-                }
+-            });
++            ((NetHandlerPlayServer)processor).player.world.tickLoop.addScheduledTask(() -> packetIn.processPacket(processor));
+             throw ThreadQuickExitException.INSTANCE;
+         }
+     }

@@ -1188,7 +1188,7 @@
              this.sendPacketWithinDistance(entityplayermp, longDistance, xCoord, yCoord, zCoord, spacketparticles);
          }
      }
-@@ -1294,7 +1627,16 @@
+@@ -1294,12 +1627,21 @@
      @Nullable
      public Entity getEntityFromUuid(UUID uuid)
      {
@@ -1206,6 +1206,12 @@
      }
  
      public ListenableFuture<Object> addScheduledTask(Runnable runnableToSchedule)
+     {
+-        return this.mcServer.addScheduledTask(runnableToSchedule);
++        return this.tickLoop.addScheduledTask(runnableToSchedule);
+     }
+ 
+     public boolean isCallingFromMinecraftThread()
 @@ -1323,7 +1665,12 @@
          return this.functionManager;
      }

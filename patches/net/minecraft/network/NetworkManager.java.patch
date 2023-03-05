@@ -15,7 +15,7 @@
  import net.minecraft.util.CryptManager;
  import net.minecraft.util.ITickable;
  import net.minecraft.util.LazyLoadBase;
-@@ -46,201 +48,162 @@
+@@ -46,201 +48,163 @@
  import org.apache.logging.log4j.Marker;
  import org.apache.logging.log4j.MarkerManager;
  
@@ -65,7 +65,7 @@
 +    public java.util.UUID spoofedUUID;
 +    public com.mojang.authlib.properties.Property[] spoofedProfile;
 +    // Spigot End
-+    public boolean preparing = true; // Spigot
++    public volatile boolean preparing = true; // Spigot
      private INetHandler packetListener;
      private ITextComponent terminationReason;
      private boolean isEncrypted;
@@ -125,6 +125,7 @@
 +        if (p_exceptionCaught_2_ instanceof TimeoutException) {
              textcomponenttranslation = new TextComponentTranslation("disconnect.timeout", new Object[0]);
 +        } else {
++            p_exceptionCaught_2_.printStackTrace();
 +            textcomponenttranslation = new TextComponentTranslation("disconnect.genericReason", new Object[]{"Internal Exception: " + p_exceptionCaught_2_});
          }
 -        else
@@ -278,7 +279,7 @@
                          channelfuture1.addListeners(futureListeners);
                      }
  
-@@ -250,89 +213,71 @@
+@@ -250,89 +214,71 @@
          }
      }
  
@@ -396,7 +397,7 @@
                      ;
                  }
  
-@@ -343,126 +288,105 @@
+@@ -343,126 +289,105 @@
      }
  
      @SideOnly(Side.CLIENT)

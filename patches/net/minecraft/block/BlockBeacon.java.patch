@@ -1,0 +1,11 @@
+--- ../src-base/minecraft/net/minecraft/block/BlockBeacon.java
++++ ../src-work/minecraft/net/minecraft/block/BlockBeacon.java
+@@ -125,7 +125,7 @@
+ 
+                     if (iblockstate.getBlock() == Blocks.BEACON)
+                     {
+-                        ((WorldServer)worldIn).addScheduledTask(new Runnable()
++                        ((WorldServer)worldIn).tickLoop.postTask(new Runnable()
+                         {
+                             public void run()
+                             {

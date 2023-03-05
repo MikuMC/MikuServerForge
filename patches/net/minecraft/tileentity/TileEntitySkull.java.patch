@@ -1,6 +1,6 @@
 --- ../src-base/minecraft/net/minecraft/tileentity/TileEntitySkull.java
 +++ ../src-work/minecraft/net/minecraft/tileentity/TileEntitySkull.java
-@@ -1,15 +1,32 @@
+@@ -1,34 +1,105 @@
  package net.minecraft.tileentity;
  
 +import catserver.server.CatServer;
@@ -33,7 +33,13 @@
  import net.minecraft.server.management.PlayerProfileCache;
  import net.minecraft.util.EnumFacing;
  import net.minecraft.util.ITickable;
-@@ -22,13 +39,66 @@
+ import net.minecraft.util.Mirror;
+ import net.minecraft.util.Rotation;
+ import net.minecraft.util.StringUtils;
++import net.minecraft.world.World;
+ import net.minecraftforge.fml.relauncher.Side;
+ import net.minecraftforge.fml.relauncher.SideOnly;
+ 
  public class TileEntitySkull extends TileEntity implements ITickable
  {
      private int skullType;
@@ -101,7 +107,7 @@
      public static void setProfileCache(PlayerProfileCache profileCacheIn)
      {
          profileCache = profileCacheIn;
-@@ -134,49 +204,90 @@
+@@ -134,49 +205,143 @@
  
      private void updatePlayerProfile()
      {
@@ -110,7 +116,7 @@
 +        // Spigot start
 +        GameProfile profile = this.playerProfile;
 +        setType( 0 ); // Work around client bug
-+        updateGameprofile(profile, new Predicate<GameProfile>() {
++        updateGameprofile(this.getWorld(),profile, new Predicate<GameProfile>() {
 +
 +            @Override
 +            public boolean apply(GameProfile input) {
@@ -129,16 +135,67 @@
  
 -    public static GameProfile updateGameprofile(GameProfile input)
 +    // Spigot start - Support async lookups
-+    public static Future<GameProfile> updateGameprofile(final GameProfile input, final Predicate<GameProfile> callback, boolean sync)
++    public static Future<GameProfile> updateGameprofile(final World world,final GameProfile input, final Predicate<GameProfile> callback, boolean sync)
      {
          if (input != null && !StringUtils.isNullOrEmpty(input.getName()))
          {
              if (input.isComplete() && input.getProperties().containsKey("textures"))
              {
 -                return input;
--            }
++                callback.apply(input);
++            } else if (MinecraftServer.getServerInst() == null) {
++                callback.apply(input);
++            } else {
++                GameProfile profile = skinCache.getIfPresent(input.getName().toLowerCase(java.util.Locale.ROOT));
++                if (profile != null && Iterables.getFirst(profile.getProperties().get("textures"), (Object) null) != null) {
++                    callback.apply(profile);
++
++                    return Futures.immediateFuture(profile);
++                }
++                else
++                {
++                    Callable<GameProfile> callable = () -> {
++                        final GameProfile profile1 = skinCache.getUnchecked(input.getName().toLowerCase(java.util.Locale.ROOT));
++                        world.tickLoop.postTask(() -> {
++                            if (profile1 == null) {
++                                callback.apply(input);
++                            } else {
++                                callback.apply(profile1);
++                            }
++                        });
++                        return profile1;
++                    };
++                    if (sync) {
++                        try {
++                            return Futures.immediateFuture(callable.call());
++                        } catch (Exception ex) {
++                            com.google.common.base.Throwables.throwIfUnchecked(ex);
++                            throw new RuntimeException(ex); // Not possible
++                        }
++                    } else {
++                        return executor.submit(callable);
++                    }
++
++                }
+             }
 -            else if (profileCache != null && sessionService != null)
--            {
++        }
++        else
++        {
++            callback.apply(input);
++        }
++
++        return Futures.immediateFuture(input);
++    }
++    // Spigot end
++
++    // Spigot start - Support async lookups
++    public static Future<GameProfile> updateGameprofile(final GameProfile input, final Predicate<GameProfile> callback, boolean sync)
++    {
++        if (input != null && !StringUtils.isNullOrEmpty(input.getName()))
++        {
++            if (input.isComplete() && input.getProperties().containsKey("textures"))
+             {
 -                GameProfile gameprofile = profileCache.getGameProfileForUsername(input.getName());
 +                callback.apply(input);
 +            } else if (MinecraftServer.getServerInst() == null) {
@@ -164,7 +221,7 @@
 +                        @Override
 +                        public GameProfile call() {
 +                            final GameProfile profile = skinCache.getUnchecked(input.getName().toLowerCase(java.util.Locale.ROOT));
-+                            MinecraftServer.getServerInst().processQueue.add(new Runnable() {
++                            MinecraftServer.getServerInst().randomPostTask(new Runnable() {
 +                                @Override
 +                                public void run() {
 +                                    if (profile == null) {

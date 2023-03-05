@@ -19,7 +19,9 @@
 
 package net.minecraftforge.common.chunkio;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -141,17 +143,16 @@ public class ChunkIOExecutor
 
     public static void tick()
     {
-        Iterator<ChunkIOProvider> itr = tasks.values().iterator();
-        while (itr.hasNext())
-        {
-            ChunkIOProvider task = itr.next();
+        final List<ChunkIOProvider> taskToRemove = new ArrayList<>();
+        for (ChunkIOProvider task : tasks.values()){
             if (task.runFinished())
             {
                 if (task.hasCallback())
                     task.syncCallback();
 
-                itr.remove();
+                taskToRemove.add(task);
             }
         }
+        tasks.values().removeAll(taskToRemove);
     }
 }
