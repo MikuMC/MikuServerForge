@@ -1067,7 +1067,7 @@
 -                BlockPos blockpos = tileentity.getPos();
 -
 -                if (this.isBlockLoaded(blockpos) && this.worldBorder.contains(blockpos))
-+        final ForkJoinTraverse<TileEntity> concurrentTileUpdateTask = ForkJoinTraverse.createNewStarted(this.loadedTileEntityList,tileentity -> {
++        final ForkJoinTraverse<TileEntity> concurrentTileUpdateTask = ForkJoinTraverse.createNewStarted(this.tickableTileEntities,tileentity -> {
 +            taskCounter.getAndIncrement();
 +            try {
 +                // Spigot start
